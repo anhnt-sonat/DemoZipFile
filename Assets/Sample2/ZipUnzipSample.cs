@@ -3,17 +3,38 @@ using System.Collections;
 using System.IO;
 using UnityEngine.Networking;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class ZipUnzipSample : MonoBehaviour
 {
     [SerializeField]
-    string baseDirectryPath = "ZipPath";
+    string baseDirectryPath = "Assets/Resources/";
 
     [SerializeField]
     string zipName = "zipfiles.zip";
 
     [SerializeField]
     private List<string> files = new List<string>();
+
+    [SerializeField]
+    private Text txtCurrentVersion;
+
+    [SerializeField] private int VersionDownload = 0;
+
+    private int CurrentVersion
+    {
+        get => PlayerPrefs.GetInt("CurrentVersion");
+        set
+        {
+            PlayerPrefs.SetInt("CurrentVersion", value);
+            txtCurrentVersion.text = value.ToString();
+        }
+    }
+
+    private void Awake()
+    {
+        txtCurrentVersion.text = CurrentVersion.ToString();
+    }
 
     string zipPath
     {
@@ -34,40 +55,45 @@ public class ZipUnzipSample : MonoBehaviour
 
     private IEnumerator DownloadZipFile(string url)
     {
-        using (UnityWebRequest www = UnityWebRequest.Get(url))
+        if (VersionDownload <= CurrentVersion)
         {
+            Debug.Log("Version download <= current version");
+            yield return null;
+        }
+        else
+        {
+            Debug.Log("downloading...");
+
+            using UnityWebRequest www = UnityWebRequest.Get(url);
+
             yield return www.Send();
+
             if (www.isNetworkError || www.isHttpError)
             {
                 Debug.Log(www.error);
             }
             else
             {
-                string savePath = "Assets/Resources/zip_file_name_demo.zip";
+                DeleteFile();
 
-                System.IO.File.WriteAllBytes(savePath, www.downloadHandler.data);
-                Debug.Log("anhnt: " + savePath);
+                System.IO.File.WriteAllBytes(baseDirectryPath + zipName, www.downloadHandler.data);
+
+                Debug.Log("anhnt: write file ok" + baseDirectryPath);
+
+                Invoke(nameof(Unzip), 0.1f);
+
+                CurrentVersion = VersionDownload;
+                //Invoke(nameof(OpenDir), 1f);
             }
         }
+
     }
 
 
     public void Zip()
     {
-       // files.Clear();
+        // files.Clear();
         //var fileOpen = File.ReadAllBytes(baseDirectryPath, );
-
-
-        string path = "Assets/Resources/sample.txt";
-
-        string[] lines = System.IO.File.ReadAllLines(path);
-
-        //c.name = lines[Random.Range(0, lines.Length)];
-
-        foreach (var item in lines)
-        {
-            Debug.Log(item);
-        }
 
         foreach (var file in files)
         {
@@ -94,11 +120,25 @@ public class ZipUnzipSample : MonoBehaviour
 
         ZipUtil.Unzip(zipPath, baseDirectryPath);
         System.Diagnostics.Process.Start(Path.GetDirectoryName(zipPath));
+
+        Debug.Log("anhnt: unzip file ok" + baseDirectryPath);
+
     }
 
     public void OpenDir()
     {
         Directory.CreateDirectory(baseDirectryPath);
         System.Diagnostics.Process.Start(baseDirectryPath);
+        Debug.Log("anhnt: open dir ok" + baseDirectryPath);
+
+    }
+
+    public void DeleteFile()
+    {
+        if (Directory.Exists(baseDirectryPath)) { Directory.Delete(baseDirectryPath, true); }
+        Directory.CreateDirectory(baseDirectryPath);
+
+        Debug.Log("anhnt: delete file ok" + baseDirectryPath);
+
     }
 }
